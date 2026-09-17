@@ -1,0 +1,41 @@
+# YOLOv8s-OBB with a P2/4 high-resolution detection branch.
+# Layers 0-21 are identical to the baseline so compatible weights can be reused.
+
+nc: 3
+scales:
+  s: [0.33, 0.50, 1024]
+
+backbone:
+  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+  - [-1, 3, C2f, [128, True]] # 2
+  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+  - [-1, 6, C2f, [256, True]] # 4
+  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+  - [-1, 6, C2f, [512, True]] # 6
+  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+  - [-1, 3, C2f, [1024, True]] # 8
+  - [-1, 1, SPPF, [1024, 5]] # 9
+
+head:
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 10
+  - [[-1, 6], 1, Concat, [1]] # 11
+  - [-1, 3, C2f, [512]] # 12
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 13
+  - [[-1, 4], 1, Concat, [1]] # 14
+  - [-1, 3, C2f, [256]] # 15 P3/8
+  - [-1, 1, Conv, [256, 3, 2]] # 16
+  - [[-1, 12], 1, Concat, [1]] # 17
+  - [-1, 3, C2f, [512]] # 18 P4/16
+  - [-1, 1, Conv, [512, 3, 2]] # 19
+  - [[-1, 9], 1, Concat, [1]] # 20
+  - [-1, 3, C2f, [1024]] # 21 P5/32
+
+  # P3 -> P2 top-down path, then P2 -> P3 bottom-up refinement.
+  - [15, 1, nn.Upsample, [None, 2, "nearest"]] # 22
+  - [[-1, 2], 1, Concat, [1]] # 23
+  - [-1, 3, C2f, [128]] # 24 P2/4
+  - [-1, 1, Conv, [128, 3, 2]] # 25
+  - [[-1, 15], 1, Concat, [1]] # 26
+  - [-1, 3, C2f, [256]] # 27 refined P3/8
+  - [[27, 18, 21, 24], 1, OBB, [nc, 1]] # 28 OBB(P3,P4,P5,P2)

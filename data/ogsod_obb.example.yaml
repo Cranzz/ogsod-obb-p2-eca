@@ -1,0 +1,12 @@
+# Copy or generate this file after converting OGSOD-1.0 to YOLO OBB format.
+# Do not commit the real dataset or machine-specific absolute paths.
+
+path: /absolute/path/to/OGSOD-1.0-yolo-obb
+train: train.txt
+val: val.txt
+test: test.txt
+
+names:
+  0: bridge
+  1: harbor
+  2: storage_tank
