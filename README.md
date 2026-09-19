@@ -64,7 +64,9 @@ python scripts/convert_ogsod_obb.py \
   --output /path/to/OGSOD-1.0-yolo-obb \
   --val-fraction 0.1 \
   --seed 42 \
-  --images-mode symlink
+  --images-mode symlink \
+  --image-size 256 256 \
+  --progress-every 1000
 ```
 
 ## Check Data

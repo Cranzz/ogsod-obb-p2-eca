@@ -33,6 +33,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--images-mode", choices=("symlink", "copy", "none"), default="symlink")
+    parser.add_argument(
+        "--image-size",
+        type=int,
+        nargs=2,
+        metavar=("WIDTH", "HEIGHT"),
+        help="Known image size. Avoids reading every image through slow cloud storage.",
+    )
+    parser.add_argument("--progress-every", type=int, default=1000)
     return parser.parse_args()
 
 
@@ -75,6 +83,8 @@ def convert_split(
     label_dir: Path,
     output: Path,
     class_mapping: dict[str, int],
+    image_size: tuple[int, int] | None,
+    progress_every: int,
 ) -> tuple[list[str], list[dict], Counter[str], Counter[str]]:
     output_label_dir = output / "labels" / split
     output_label_dir.mkdir(parents=True, exist_ok=True)
@@ -85,12 +95,15 @@ def convert_split(
     class_counts: Counter[str] = Counter()
     stats: Counter[str] = Counter()
 
-    for image_path in image_files:
+    for image_index, image_path in enumerate(image_files, start=1):
         label_path = label_files.get(image_path.stem)
         if label_path is None:
             raise FileNotFoundError(f"Missing OBB label for {image_path}")
-        with Image.open(image_path) as image:
-            width, height = image.size
+        if image_size is None:
+            with Image.open(image_path) as image:
+                width, height = image.size
+        else:
+            width, height = image_size
 
         converted_lines = []
         for line_number, line in enumerate(label_path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -148,6 +161,8 @@ def convert_split(
         output_label_path = output_label_dir / f"{image_path.stem}.txt"
         output_label_path.write_text("\n".join(converted_lines) + ("\n" if converted_lines else ""), encoding="utf-8")
         image_paths.append(str((output / "images" / split / image_path.name).resolve()))
+        if progress_every and image_index % progress_every == 0:
+            print(f"[{split}] converted {image_index}/{len(image_files)} images", flush=True)
 
     missing_labels = set(label_files) - {path.stem for path in image_files}
     if missing_labels:
@@ -175,10 +190,22 @@ def main() -> None:
         link_or_copy(image_root / split, output / "images" / split, args.images_mode)
 
     train_images, train_removed, train_counts, train_stats = convert_split(
-        "train", image_root / "train", obb_root / "train" / "labelTxt", output, DEFAULT_CLASSES
+        "train",
+        image_root / "train",
+        obb_root / "train" / "labelTxt",
+        output,
+        DEFAULT_CLASSES,
+        tuple(args.image_size) if args.image_size else None,
+        args.progress_every,
     )
     test_images, test_removed, test_counts, test_stats = convert_split(
-        "test", image_root / "test", obb_root / "test" / "labelTxt", output, DEFAULT_CLASSES
+        "test",
+        image_root / "test",
+        obb_root / "test" / "labelTxt",
+        output,
+        DEFAULT_CLASSES,
+        tuple(args.image_size) if args.image_size else None,
+        args.progress_every,
     )
 
     rng = random.Random(args.seed)
