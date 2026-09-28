@@ -160,7 +160,10 @@ def convert_split(
 
         output_label_path = output_label_dir / f"{image_path.stem}.txt"
         output_label_path.write_text("\n".join(converted_lines) + ("\n" if converted_lines else ""), encoding="utf-8")
-        image_paths.append(str((output / "images" / split / image_path.name).resolve()))
+        # Keep the derived image path instead of resolving the symlink. Resolving it
+        # would make Ultralytics locate the original horizontal labels next to the
+        # source images instead of the converted OBB labels.
+        image_paths.append(str(output / "images" / split / image_path.name))
         if progress_every and image_index % progress_every == 0:
             print(f"[{split}] converted {image_index}/{len(image_files)} images", flush=True)
 
