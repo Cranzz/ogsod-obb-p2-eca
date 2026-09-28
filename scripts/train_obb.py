@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--patience", type=int, default=30)
+    parser.add_argument("--fraction", type=float, default=1.0, help="Fraction of each split used for a smoke test.")
     parser.add_argument("--project", type=Path, default=PROJECT_ROOT / "runs" / "train")
     parser.add_argument("--name", default=None)
     parser.add_argument("--pretrained", default=None, help="Optional compatible checkpoint, such as yolov8s-obb.pt.")
@@ -85,6 +86,7 @@ def main() -> None:
         seed=args.seed,
         deterministic=True,
         patience=args.patience,
+        fraction=args.fraction,
         project=str(args.project.resolve()),
         name=run_name,
         plots=True,
