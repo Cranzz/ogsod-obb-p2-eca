@@ -47,6 +47,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--name", default=None)
     parser.add_argument("--pretrained", default=None, help="Optional compatible checkpoint, such as yolov8s-obb.pt.")
     parser.add_argument("--eval-split", choices=("val", "test"), default="test")
+    parser.add_argument("--no-val", action="store_false", dest="validate", help="Skip validation for a fast smoke test.")
+    parser.set_defaults(validate=True)
     return parser.parse_args()
 
 
@@ -91,7 +93,13 @@ def main() -> None:
         name=run_name,
         plots=True,
         save_period=10,
+        val=args.validate,
     )
+
+    if not args.validate:
+        print(f"Best model: {results.save_dir}")
+        print("Validation skipped because --no-val was provided.")
+        return
 
     best_model = YOLO(str(Path(results.save_dir) / "weights" / "best.pt"))
     metrics = best_model.val(
